@@ -272,3 +272,20 @@ h3 { margin: 24px 0 12px; font-size: 16px; color: var(--text); }
 ::-webkit-scrollbar-thumb { background: #cdd3e6; border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: #b8c0d8; }
 ::-webkit-scrollbar-track { background: transparent; }
+/* ---- 自动保存 / 多端冲突 ---- */
+.exam-header-right { display: flex; align-items: center; gap: 12px; }
+.save-hint { color: #90a4ae; font-size: 13px; font-variant-numeric: tabular-nums; }
+.save-hint-error { color: var(--warning, #f39c12); }
+.conflict-tip {
+  color: #fff; background: #e67e22; border-radius: 6px;
+  padding: 4px 10px; font-size: 13px;
+}
+.conflict-bar-wrap { margin-top: 12px; }
+.conflict-bar {
+  border: 1px solid #e67e22; background: #fef5ec; padding: 12px 16px;
+}
+.conflict-answers { display: flex; gap: 16px; margin: 8px 0; font-size: 13px; flex-wrap: wrap; }
+.conflict-side { color: #555; }
+.conflict-side-server { color: #1565c0; }
+.conflict-actions { display: flex; gap: 10px; }
+.question-conflict { outline: 2px solid #e67e22; }

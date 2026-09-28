@@ -6,6 +6,8 @@ import type {
   ExamStartData,
   ExamResult,
   AnswerSubmit,
+  AnswerSavePayload,
+  AutosaveResult,
   PageResponse,
   ExamStatus,
 } from '@/types'
@@ -41,12 +43,30 @@ export function startExam(examId: number) {
   return http<ExamStartData>({ url: `/attempts/${examId}/start`, method: 'POST' })
 }
 
-export function submitExam(attemptId: number, answers: AnswerSubmit[]) {
+export function resumeAttempt(attemptId: number) {
+  return http<ExamStartData>({ url: `/attempts/${attemptId}/resume`, method: 'GET' })
+}
+
+export function autosaveAnswers(attemptId: number, answers: AnswerSavePayload[]) {
+  return http<AutosaveResult>({
+    url: `/attempts/${attemptId}/autosave`,
+    method: 'POST',
+    data: { answers },
+    timeout: 10000,
+  })
+}
+
+export function submitExam(attemptId: number, answers: AnswerSubmit[], idempotencyKey?: string) {
   return http<ExamResult>({
     url: `/attempts/${attemptId}/submit`,
     method: 'POST',
-    data: { answers },
+    data: { answers, idempotency_key: idempotencyKey },
+    timeout: 20000,
   })
+}
+
+export function getAttemptResult(attemptId: number) {
+  return http<ExamResult>({ url: `/attempts/${attemptId}/result`, method: 'GET' })
 }
 
 export function reportScreenSwitch(attemptId: number) {

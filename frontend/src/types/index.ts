@@ -212,6 +212,13 @@ export interface ExamQuestionBrief {
   options: Array<{ id: number; content: string; is_correct?: number }>
 }
 
+export interface SavedAnswer {
+  question_id: number
+  user_answer: string
+  time_spent_seconds: number
+  version: number
+}
+
 export interface ExamStartData {
   attempt_id: number
   exam_id: number
@@ -219,13 +226,46 @@ export interface ExamStartData {
   duration_minutes: number
   total_score: number
   start_time: string
+  server_time: string
+  deadline: string
+  status: 'in_progress' | 'submitted' | 'graded'
   questions: ExamQuestionBrief[]
+  answers: SavedAnswer[]
 }
 
 export interface AnswerSubmit {
   question_id: number
   user_answer: string
   time_spent_seconds: number
+}
+
+export interface AnswerSavePayload {
+  question_id: number
+  user_answer: string
+  time_spent_seconds?: number
+  base_version: number
+}
+
+export interface AutosaveConflict {
+  question_id: number
+  server_answer: string
+  server_version: number
+  client_answer: string
+}
+
+export interface AutosaveResult {
+  attempt_id: number
+  status: 'in_progress' | 'submitted' | 'graded'
+  server_time: string
+  deadline: string
+  saved: Array<{
+    question_id: number
+    user_answer: string
+    time_spent_seconds: number
+    version: number
+  }>
+  versions: Record<string, number>
+  conflicts: AutosaveConflict[]
 }
 
 export interface ExamAnswerResult {

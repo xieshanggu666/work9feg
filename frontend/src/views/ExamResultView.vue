@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { getAttemptResult } from '@/api/exams'
 import { listCertificates } from '@/api/grades'
 import type { Certificate, ExamResult } from '@/types'
 
@@ -9,15 +10,23 @@ const attemptId = Number(route.params.attemptId)
 
 const result = ref<ExamResult | null>(null)
 const certs = ref<Certificate[]>([])
-const hasCached = ref(false)
+const loading = ref(true)
+const loadError = ref('')
 
 onMounted(async () => {
   const cached = sessionStorage.getItem(`result:${attemptId}`)
   if (cached) {
     result.value = JSON.parse(cached) as ExamResult
-    hasCached.value = true
     sessionStorage.removeItem(`result:${attemptId}`)
+  } else {
+    // 无缓存：可能是在其它端交卷、或服务端到时自动交卷后跳转/刷新
+    try {
+      result.value = await getAttemptResult(attemptId)
+    } catch {
+      loadError.value = '成绩尚未生成，服务端会在到时后按已保存答案自动交卷，请稍后刷新'
+    }
   }
+  loading.value = false
   // 证书信息在有/无缓存时都可补充展示
   try {
     certs.value = await listCertificates()
@@ -32,7 +41,14 @@ onMounted(async () => {
     <div class="login-card result-card">
       <h1>📄 考试结果</h1>
 
-      <template v-if="result">
+      <div v-if="loading" class="result-meta">正在加载成绩...</div>
+
+      <template v-else-if="loadError">
+        <div class="result-score">考试已提交 ✅</div>
+        <div class="result-meta">{{ loadError }}</div>
+      </template>
+
+      <template v-else-if="result">
         <div
           class="result-score"
           :style="{ color: result.is_passed ? '#2e7d32' : '#e74c3c' }"

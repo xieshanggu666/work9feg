@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Integer, DateTime, Text, ForeignKey
+from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -36,7 +36,11 @@ class ExamAttempt(Base):
 
 
 class ExamAnswer(Base):
+    """答题记录同时充当「自动保存的草稿」：开考后逐题 upsert，交卷时原地评分。"""
     __tablename__ = "exam_answers"
+    __table_args__ = (
+        UniqueConstraint("attempt_id", "question_id", name="ux_answers_attempt_question"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     attempt_id: Mapped[int] = mapped_column(Integer, ForeignKey("exam_attempts.id"), nullable=False, index=True)
@@ -45,6 +49,8 @@ class ExamAnswer(Base):
     is_correct: Mapped[int] = mapped_column(Integer, default=0)
     score: Mapped[float] = mapped_column(default=0.0)
     time_spent_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    # 乐观锁版本号：每次保存 +1，用于多端修改冲突检测
+    version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     attempt: Mapped[ExamAttempt] = relationship("ExamAttempt", back_populates="answers")
     question = relationship("Question")

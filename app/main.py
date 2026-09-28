@@ -9,7 +9,9 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.database import Base, engine
+from app.core.migrations import run_migrations
 from app.models import *  # noqa: F401,F403 确保模型注册
+from app.services import auto_submit
 
 from app.api import auth, users, questions, exams, attempts, grades, bookings
 
@@ -21,8 +23,11 @@ FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
 async def lifespan(app: FastAPI):
     data_dir = BASE_DIR / "data"
     os.makedirs(data_dir, exist_ok=True)
-    Base.metadata.create_all(bind=engine)
+    run_migrations(engine)
+    # 到时自动交卷：启动即扫描（覆盖停机期间到期的考试），之后周期扫描
+    auto_submit.start(interval_seconds=10.0)
     yield
+    auto_submit.stop()
 
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
