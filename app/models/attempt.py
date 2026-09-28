@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Integer, DateTime, Text, ForeignKey
+from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -21,6 +21,11 @@ class ExamAttempt(Base):
     score: Mapped[float] = mapped_column(default=0.0)
     is_passed: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="in_progress")  # in_progress/submitted/graded
+    # 交卷方式：manual=手动交卷 timeout=到时服务端自动交卷 forced=防作弊强制交卷
+    submit_type: Mapped[str] = mapped_column(String(20), default="")
+    # 已保存答案的乐观锁版本号，每次自动保存 +1（多端冲突检测用）
+    answer_version: Mapped[int] = mapped_column(Integer, default=0)
+    last_save_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ip_address: Mapped[str] = mapped_column(String(50), default="")
     user_agent: Mapped[str] = mapped_column(String(255), default="")
     cheat_warning_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -45,6 +50,13 @@ class ExamAnswer(Base):
     is_correct: Mapped[int] = mapped_column(Integer, default=0)
     score: Mapped[float] = mapped_column(default=0.0)
     time_spent_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    # 该答案最后一次被保存时对应的 attempt.answer_version（多端冲突检测用）
+    version: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("attempt_id", "question_id", name="uq_answer_attempt_question"),
+    )
 
     attempt: Mapped[ExamAttempt] = relationship("ExamAttempt", back_populates="answers")
     question = relationship("Question")

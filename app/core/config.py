@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     MAX_SCREEN_SWITCH_COUNT: int = 5      # 超过该次数强制交卷
     MIN_ANSWER_SECONDS: int = 5           # 单题最少用时，低于视为异常
 
+    # 到时自动交卷：后台扫描间隔（秒）
+    AUTO_SUBMIT_INTERVAL_SECONDS: int = 15
+    # 前端自动保存答案的建议间隔（秒）
+    ANSWER_AUTOSAVE_INTERVAL_SECONDS: int = 10
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

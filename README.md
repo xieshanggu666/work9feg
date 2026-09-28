@@ -20,6 +20,16 @@
 - 考试生命周期：草稿 → 发布 → 结束
 - 题目乱序、选项乱序
 - 限时考试 + 倒计时自动交卷
+- **答题自动保存**：作答过程中定时（默认 10s）将答案增量保存到服务端，
+  页面关闭/刷新时通过 `keepalive` 再兜底保存一次
+- **刷新/重连恢复**：重新进入考试时从服务端恢复已保存答案、单题用时与
+  **剩余时间**（以服务端 `deadline` 为准并校准客户端时钟，防止改本地时钟续命）
+- **多端冲突处理**：每题带版本号（乐观锁）；同一答案在其它设备被更新后，
+  旧端不会静默覆盖（server-wins），冲突题回传服务端最新答案并提示核对
+- **到时服务端交卷**：后台任务周期扫描到时未交的考试，按**已保存的答案**
+  自动收卷评分（不依赖客户端在线/倒计时）
+- **交卷幂等**：重复提交（网络重试、多端重复点击、与自动交卷并发）只评分一次，
+  不重复计分、不重复占用考试次数、不重复发证；重复请求返回首次成绩（`already=true`）
 - **防作弊**：切屏检测（超限警告 / 强制交卷）、答题用时异常检测、同 IP 多账号检测
 
 ### 自动评分
@@ -171,7 +181,7 @@ exam_system/
 | 认证 | `POST /api/auth/login` |
 | 题库 | `GET/POST /api/questions`、`/api/questions/subjects`、`/api/questions/knowledge-points`、`/api/questions/tags` |
 | 考试 | `GET/POST /api/exams`、`POST /api/exams/papers/smart-generate` |
-| 答题 | `POST /api/attempts/{exam_id}/start`、`POST /api/attempts/{attempt_id}/submit`、`POST /api/attempts/{attempt_id}/screen-switch` |
+| 答题 | `POST /api/attempts/{exam_id}/start`（开考/恢复）、`GET /api/attempts/{id}/resume`（重连恢复答案与剩余时间）、`PUT /api/attempts/{id}/answers`（自动保存/冲突检测）、`POST /api/attempts/{id}/submit`（幂等交卷）、`GET /api/attempts/{id}/result`、`POST /api/attempts/{id}/screen-switch` |
 | 统计 | `GET /api/grades/stats/{exam_id}`、`/api/grades/rank/{exam_id}`、`/api/grades/leaderboard/{exam_id}`、`/api/grades/certificates` |
 | 预约补考 | 时段：`POST/GET /api/exams/{id}/slots`、`PUT/DELETE /api/slots/{id}`（管理员）；申请：`POST /api/bookings`、`GET /api/bookings/my`、`POST /api/bookings/{id}/cancel`（学生）；审核：`GET /api/bookings`、`POST /api/bookings/{id}/review`（教师/管理员）；资格：`GET /api/exams/{id}/eligibility` |
 

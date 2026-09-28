@@ -212,6 +212,13 @@ export interface ExamQuestionBrief {
   options: Array<{ id: number; content: string; is_correct?: number }>
 }
 
+export interface SavedAnswer {
+  question_id: number
+  user_answer: string
+  time_spent_seconds: number
+  version: number
+}
+
 export interface ExamStartData {
   attempt_id: number
   exam_id: number
@@ -220,12 +227,29 @@ export interface ExamStartData {
   total_score: number
   start_time: string
   questions: ExamQuestionBrief[]
+  // 恢复与多端同步
+  status: 'in_progress' | 'graded'
+  answers: SavedAnswer[]
+  answer_version: number
+  deadline: string | null
+  server_time: string | null
 }
 
 export interface AnswerSubmit {
   question_id: number
   user_answer: string
   time_spent_seconds: number
+  base_version?: number
+}
+
+export interface AnswerSaveResult {
+  answer_version: number
+  saved_count: number
+  conflicts: Array<{
+    question_id: number
+    server_answer: string
+    server_version: number
+  }>
 }
 
 export interface ExamAnswerResult {
@@ -247,6 +271,8 @@ export interface ExamResult {
   answers: ExamAnswerResult[]
   rank: number | null
   percentile: number | null
+  already?: boolean
+  submit_type?: 'manual' | 'timeout' | 'forced'
 }
 
 export interface Certificate {

@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.schemas.common import ORMModel
-from app.schemas.question import QuestionResponse
+from app.schemas.question import QuestionResponse  # noqa: F401（保留对外类型引用）
 
 
 class ExamQuestionBrief(BaseModel):
@@ -15,6 +15,14 @@ class ExamQuestionBrief(BaseModel):
     options: list[dict] = []
 
 
+class SavedAnswerBrief(BaseModel):
+    """已保存到服务端的单题答案（刷新/重连恢复用）"""
+    question_id: int
+    user_answer: str
+    time_spent_seconds: int = 0
+    version: int = 0
+
+
 class ExamStartResponse(BaseModel):
     attempt_id: int
     exam_id: int
@@ -23,16 +31,42 @@ class ExamStartResponse(BaseModel):
     total_score: int
     start_time: datetime
     questions: list[ExamQuestionBrief]
+    # 恢复与多端同步
+    status: str = "in_progress"          # in_progress / graded
+    answers: list[SavedAnswerBrief] = []
+    answer_version: int = 0
+    deadline: datetime | None = None    # 服务端交卷截止时刻
+    server_time: datetime | None = None  # 响应生成时的服务端时钟（用于校准时钟偏移）
 
 
 class AnswerSubmit(BaseModel):
     question_id: int
     user_answer: str
     time_spent_seconds: int = 0
+    # 客户端上次同步到的该题版本号，用于多端冲突检测
+    base_version: int = 0
 
 
 class ExamSubmitRequest(BaseModel):
     answers: list[AnswerSubmit] = []
+    # manual=手动交卷 timeout=到时自动交卷 forced=防作弊强制交卷
+    submit_type: str = "manual"
+
+
+class AnswerSaveRequest(BaseModel):
+    answers: list[AnswerSubmit]
+
+
+class AnswerConflictItem(BaseModel):
+    question_id: int
+    server_answer: str
+    server_version: int
+
+
+class AnswerSaveResponse(BaseModel):
+    answer_version: int
+    saved_count: int
+    conflicts: list[AnswerConflictItem] = []
 
 
 class ExamAnswerResponse(ORMModel):
@@ -67,3 +101,6 @@ class ExamResultResponse(BaseModel):
     answers: list[ExamAnswerResponse]
     rank: int | None = None
     percentile: float | None = None
+    # 重复提交时返回 already=True，前端可直接当作交卷成功
+    already: bool = False
+    submit_type: str = "manual"

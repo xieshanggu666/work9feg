@@ -1,10 +1,11 @@
-import { http } from './request'
+import { http, getToken } from './request'
 import type {
   Exam,
   ExamCreatePayload,
   ExamDetail,
   ExamStartData,
   ExamResult,
+  AnswerSaveResult,
   AnswerSubmit,
   PageResponse,
   ExamStatus,
@@ -41,11 +42,40 @@ export function startExam(examId: number) {
   return http<ExamStartData>({ url: `/attempts/${examId}/start`, method: 'POST' })
 }
 
-export function submitExam(attemptId: number, answers: AnswerSubmit[]) {
+export function saveAnswers(attemptId: number, answers: AnswerSubmit[]) {
+  return http<AnswerSaveResult>({
+    url: `/attempts/${attemptId}/answers`,
+    method: 'PUT',
+    data: { answers },
+  })
+}
+
+/** 页面关闭/刷新时用 keepalive 做最后一次兜底保存（不等待响应） */
+export function saveAnswersBeacon(attemptId: number, answers: AnswerSubmit[]) {
+  try {
+    void fetch(`/api/attempts/${attemptId}/answers`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({ answers }),
+      keepalive: true,
+    })
+  } catch {
+    /* 页面卸载阶段失败可忽略，周期性保存已覆盖大多数情况 */
+  }
+}
+
+export function getAttemptResult(attemptId: number) {
+  return http<ExamResult>({ url: `/attempts/${attemptId}/result`, method: 'GET' })
+}
+
+export function submitExam(attemptId: number, answers: AnswerSubmit[], submitType = 'manual') {
   return http<ExamResult>({
     url: `/attempts/${attemptId}/submit`,
     method: 'POST',
-    data: { answers },
+    data: { answers, submit_type: submitType },
   })
 }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { getAttemptResult } from '@/api/exams'
 import { listCertificates } from '@/api/grades'
 import type { Certificate, ExamResult } from '@/types'
 
@@ -9,14 +10,24 @@ const attemptId = Number(route.params.attemptId)
 
 const result = ref<ExamResult | null>(null)
 const certs = ref<Certificate[]>([])
-const hasCached = ref(false)
+const loading = ref(true)
+const loadError = ref('')
 
 onMounted(async () => {
+  // 优先使用交卷时写入的缓存（含本次排名等），没有则向服务端查询（支持刷新/重连）
   const cached = sessionStorage.getItem(`result:${attemptId}`)
   if (cached) {
     result.value = JSON.parse(cached) as ExamResult
-    hasCached.value = true
     sessionStorage.removeItem(`result:${attemptId}`)
+    loading.value = false
+  } else {
+    try {
+      result.value = await getAttemptResult(attemptId)
+    } catch (e) {
+      loadError.value = e instanceof Error ? e.message : '暂时无法获取成绩'
+    } finally {
+      loading.value = false
+    }
   }
   // 证书信息在有/无缓存时都可补充展示
   try {
@@ -32,12 +43,19 @@ onMounted(async () => {
     <div class="login-card result-card">
       <h1>📄 考试结果</h1>
 
-      <template v-if="result">
+      <div v-if="loading" class="loading">正在获取成绩...</div>
+
+      <template v-else-if="result">
         <div
           class="result-score"
           :style="{ color: result.is_passed ? '#2e7d32' : '#e74c3c' }"
         >
           {{ result.is_passed ? '🎉 恭喜通过！' : '很遗憾，未通过' }}
+        </div>
+        <div class="result-meta">
+          <span v-if="result.submit_type === 'timeout'" class="badge badge-type">到时自动交卷</span>
+          <span v-else-if="result.submit_type === 'forced'" class="badge badge-type">强制交卷</span>
+          <span v-if="result.already" class="muted">（重复提交已忽略，按首次交卷计分）</span>
         </div>
         <div class="result-score">{{ result.score }} / {{ result.total_score }} 分</div>
         <div class="result-meta">
@@ -53,8 +71,7 @@ onMounted(async () => {
       </template>
 
       <template v-else>
-        <div class="result-score">考试已提交 ✅</div>
-        <div class="result-meta">详细成绩请在考试结束后于统计页查看</div>
+        <div class="result-meta">{{ loadError || '考试尚未完成交卷' }}</div>
       </template>
 
       <h3 style="margin-top: 18px">我的证书（{{ certs.length }} 张）</h3>

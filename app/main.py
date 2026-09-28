@@ -22,7 +22,16 @@ async def lifespan(app: FastAPI):
     data_dir = BASE_DIR / "data"
     os.makedirs(data_dir, exist_ok=True)
     Base.metadata.create_all(bind=engine)
-    yield
+    # 为已有数据库补齐新增列（幂等）
+    from app.core.migrations import run_migrations
+    run_migrations()
+    # 到时自动交卷后台扫描（按已保存答案收卷，不依赖客户端在线）
+    from app.services.auto_submit import start_worker
+    _, stop_event = start_worker()
+    try:
+        yield
+    finally:
+        stop_event.set()
 
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
